@@ -9,7 +9,6 @@ import java.util.Objects;
 import javax.swing.*;
 import Constants.CONSTANTS;
 import Processing.IMGProcessor;
-import sequential.ImgProcessing.ImgProcMethods;
 
 public class GUI {
     private final JLabel originalImageLabel;
@@ -185,7 +184,7 @@ public class GUI {
             originalImageLabel.setIcon(inputIcon);
             processedImageLabel.setIcon(outputIcon);
 
-            // Optional: set tooltips or labels under images
+            // set tooltips or labels under images
             originalImageLabel.setText("Original (rescaled)");
             originalImageLabel.setHorizontalTextPosition(JLabel.CENTER);
             originalImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
