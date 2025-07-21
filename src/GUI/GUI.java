@@ -1,11 +1,9 @@
 package GUI;
+
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Objects;
 import javax.swing.*;
 import Constants.CONSTANTS;
 import Processing.IMGProcessor;
@@ -14,19 +12,22 @@ public class GUI {
     private final JLabel originalImageLabel;
     private final JLabel processedImageLabel;
     private final JPanel imageDisplayPanel;
+    private final JLabel runtimeLabel;
     private final IMGProcessor processor;
+    private File selectedImageFile; // currently selected image file
+
+    private JFrame frame;
 
     public GUI(IMGProcessor processor) {
         this.processor = processor;
-        JFrame frame = new JFrame("Kernel Image Processing");
-        frame.setSize(800, 800);
+        this.selectedImageFile = null; // no image initially
 
-        // Center the frame on the screen
+        frame = new JFrame("Kernel Image Processing");
+        frame.setSize(800, 800);
         frame.setLocationRelativeTo(null);
 
         JPanel main = new JPanel(new FlowLayout());
 
-        // Create a main panel with GridBagLayout
         JPanel mainPanel = new JPanel(new GridBagLayout());
         main.add(mainPanel);
         frame.add(main);
@@ -34,32 +35,28 @@ public class GUI {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.BASELINE; // Align to the top-left
-        gbc.gridy++;
+        gbc.anchor = GridBagConstraints.BASELINE;
 
-        // Create a panel for image selection
+        // Panel for image selection
         JPanel imagePanel = new JPanel(new FlowLayout());
-        JLabel labelImage = new JLabel("Select Image:");
+        JLabel labelImage = new JLabel("Selected Image: ");
+        labelImage.setFont(new Font("Courier", Font.BOLD, 18));
         imagePanel.add(labelImage);
 
-        File inputImagesDirectory = new File(CONSTANTS.INPUT_IMAGES_DIRECTORY);
-        File[] inputImageFiles = inputImagesDirectory.listFiles();
+        // Label to show selected image filename
+        JLabel selectedImageLabel = new JLabel("No image selected");
+        selectedImageLabel.setFont(new Font("Courier", Font.ITALIC, 16));
+        imagePanel.add(selectedImageLabel);
 
-        assert inputImageFiles != null; // to suppress warning
-        String[] imageNames = new String[inputImageFiles.length];
-        for (int i = 0; i < inputImageFiles.length; i++) {
-            imageNames[i] = inputImageFiles[i].getName();
-        }
-
-        JComboBox<String> imageComboBox = new JComboBox<>(imageNames);
-        imageComboBox.setFont(new Font("Courier", Font.ITALIC, 20));
-        imagePanel.add(imageComboBox);
+        // Button to choose image file
+        JButton chooseImageButton = new JButton("Choose Image");
+        chooseImageButton.setFont(new Font("Courier", Font.BOLD, 14));
+        imagePanel.add(chooseImageButton);
 
         mainPanel.add(imagePanel, gbc);
-
         gbc.gridy++;
 
-        // Create a panel for kernel modification
+        // Kernel modification panel (same as your original)
         JPanel kernelModificationPanel = new JPanel(new FlowLayout());
         JLabel labelKernel = new JLabel("Kernel Type: ");
         labelKernel.setFont(new Font("Courier", Font.BOLD, 18));
@@ -69,7 +66,6 @@ public class GUI {
 
         JTextField[][] kernelFields = new JTextField[3][3];
 
-    // Define kernel options
         String[] kernelOptions = {"Ridge Detection", "Edge Detection", "Identity", "Sharpen", "Custom"};
         JComboBox<String> kernelComboBox = new JComboBox<>(kernelOptions);
         kernelComboBox.setFont(new Font("Courier", Font.BOLD, 16));
@@ -83,9 +79,8 @@ public class GUI {
             }
         }
 
-        // Populate the kernel fields
-        populateKernelFields(kernelFields, CONSTANTS.RIDGE_DETECTION_KERNEL, false); // Default to Identity Kernel
-        // Add kernel fields to the kernelPanel
+        populateKernelFields(kernelFields, CONSTANTS.RIDGE_DETECTION_KERNEL, false);
+
         for (int i = 0; i < 3; i++) {
             JPanel rowPanel = new JPanel();
             rowPanel.setLayout(new BoxLayout(rowPanel, BoxLayout.X_AXIS));
@@ -97,42 +92,29 @@ public class GUI {
 
         kernelComboBox.addActionListener(e -> {
             String selectedKernel = (String) kernelComboBox.getSelectedItem();
-            switch (Objects.requireNonNull(selectedKernel)) {
-                case "Ridge Detection":
-                    populateKernelFields(kernelFields, CONSTANTS.RIDGE_DETECTION_KERNEL, false);
-                    break;
-                case "Edge Detection":
-                    populateKernelFields(kernelFields, CONSTANTS.EDGE_DETECTION_KERNEL, false);
-                    break;
-                case "Identity":
-                    populateKernelFields(kernelFields, CONSTANTS.IDENTITY_KERNEL, false);
-                    break;
-                case "Sharpen":
-                    populateKernelFields(kernelFields, CONSTANTS.SHARPEN_KERNEL, false);
-                    break;
-                case "Custom":
-                    populateKernelFields(kernelFields, CONSTANTS.DEFAULT_KERNEL, true);
-                    break;
+            switch (selectedKernel) {
+                case "Ridge Detection" -> populateKernelFields(kernelFields, CONSTANTS.RIDGE_DETECTION_KERNEL, false);
+                case "Edge Detection" -> populateKernelFields(kernelFields, CONSTANTS.EDGE_DETECTION_KERNEL, false);
+                case "Identity" -> populateKernelFields(kernelFields, CONSTANTS.IDENTITY_KERNEL, false);
+                case "Sharpen" -> populateKernelFields(kernelFields, CONSTANTS.SHARPEN_KERNEL, false);
+                case "Custom" -> populateKernelFields(kernelFields, CONSTANTS.DEFAULT_KERNEL, true);
             }
         });
 
-
-// Add the dropdown and kernel fields to the panel
         kernelModificationPanel.add(labelKernel);
         kernelModificationPanel.add(kernelComboBox);
         kernelModificationPanel.add(kernelPanel);
-        mainPanel.add(kernelModificationPanel, gbc);
 
+        mainPanel.add(kernelModificationPanel, gbc);
         gbc.gridy++;
 
-        // Create a panel for the "Process" button
+        // Process button panel
         JPanel processButtonPanel = new JPanel(new FlowLayout());
         JButton processButton = new JButton("Process");
         processButton.setFont(new Font("Courier", Font.BOLD, 16));
         processButtonPanel.add(processButton);
 
         mainPanel.add(processButtonPanel, gbc);
-
         gbc.gridy++;
 
         imageDisplayPanel = new JPanel(new FlowLayout());
@@ -144,17 +126,58 @@ public class GUI {
         imageDisplayPanel.add(processedImageLabel);
 
         mainPanel.add(imageDisplayPanel, gbc);
+        gbc.gridy++;
 
-        // Action listener for the "Process" button
-        processButton.addActionListener((ActionEvent e) -> {
-            String selectedImageName = (String) imageComboBox.getSelectedItem();
+        runtimeLabel = new JLabel("Runtime: N/A");
+        runtimeLabel.setFont(new Font("Courier", Font.BOLD, 16));
+        mainPanel.add(runtimeLabel, gbc);
+        gbc.gridy++;
+
+        // Choose image button action: open file chooser to pick image file
+        chooseImageButton.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser(CONSTANTS.INPUT_IMAGES_DIRECTORY);
+            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            chooser.setAcceptAllFileFilterUsed(false);
+            chooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+                @Override
+                public boolean accept(File f) {
+                    if (f.isDirectory()) return true;
+                    String name = f.getName().toLowerCase();
+                    return name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".bmp");
+                }
+
+                @Override
+                public String getDescription() {
+                    return "Image Files (.png, .jpg, .jpeg, .bmp)";
+                }
+            });
+
+            int returnVal = chooser.showOpenDialog(frame);
+            if (returnVal == JFileChooser.APPROVE_OPTION) {
+                selectedImageFile = chooser.getSelectedFile();
+                selectedImageLabel.setText(selectedImageFile.getName());
+                clearImages();
+                runtimeLabel.setText("Runtime: N/A");
+            }
+        });
+
+        // Process button action
+        processButton.addActionListener(e -> {
+            if (selectedImageFile == null) {
+                JOptionPane.showMessageDialog(frame, "Please select an image first.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             int[][] customKernel = GUImethods.getCustomKernel(kernelFields);
 
-            String inputPath = CONSTANTS.INPUT_IMAGES_DIRECTORY + selectedImageName;
-            String outputPath = CONSTANTS.OUTPUT_IMAGES_DIRECTORY + "processed_" + selectedImageName;
+            String inputPath = selectedImageFile.getAbsolutePath();
+            String outputPath = CONSTANTS.OUTPUT_IMAGES_DIRECTORY + "processed_" + selectedImageFile.getName();
 
             BufferedImage inputImage = GUImethods.loadImage(inputPath);
-            assert inputImage != null;
+            if (inputImage == null) {
+                JOptionPane.showMessageDialog(frame, "Failed to load the selected image.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
             BufferedImage grayImage = processor.convertToGrayscale(inputImage);
 
@@ -162,16 +185,15 @@ public class GUI {
             BufferedImage outputImage = processor.applyConvolution(grayImage, customKernel);
             long endTime = System.currentTimeMillis();
             long runtime = endTime - startTime;
-
-            System.out.println("Sequential runtime: " + runtime + " milliseconds");
+            System.out.println(processor.toString() + " Runtime: " + runtime + " milliseconds");
 
             int width = inputImage.getWidth();
             int height = inputImage.getHeight();
-            System.out.println("Image Size: " + width + " x " + height);
+
+            runtimeLabel.setText(processor.toString() + " Runtime: " + runtime + " ms for Image Size: " + width + " x " + height);
 
             processor.processImage(inputPath, outputPath, customKernel);
 
-            // Rescale images for display
             int displayWidth = 300;
             int displayHeight = 300;
 
@@ -184,7 +206,6 @@ public class GUI {
             originalImageLabel.setIcon(inputIcon);
             processedImageLabel.setIcon(outputIcon);
 
-            // set tooltips or labels under images
             originalImageLabel.setText("Original (rescaled)");
             originalImageLabel.setHorizontalTextPosition(JLabel.CENTER);
             originalImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
@@ -193,22 +214,16 @@ public class GUI {
             processedImageLabel.setHorizontalTextPosition(JLabel.CENTER);
             processedImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
 
-            // Refresh the panel to update image display
             imageDisplayPanel.revalidate();
             imageDisplayPanel.repaint();
         });
 
-
-        labelImage.setFont(new Font("Courier", Font.BOLD, 18));
-
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Override close operation
-        // Add a WindowListener to handle closing event
+        // On window close, delete output images
+        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                // Delete all files in the outputImages directory
                 GUImethods.deleteOutputImages();
-                // Exit the application
                 System.exit(0);
             }
         });
@@ -223,6 +238,13 @@ public class GUI {
                 kernelFields[i][j].setEditable(editable);
             }
         }
+    }
+
+    private void clearImages() {
+        originalImageLabel.setIcon(null);
+        originalImageLabel.setText("");
+        processedImageLabel.setIcon(null);
+        processedImageLabel.setText("");
     }
 
     public static void run(IMGProcessor processor) {

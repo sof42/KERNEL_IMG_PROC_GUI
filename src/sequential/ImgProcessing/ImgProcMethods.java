@@ -88,4 +88,9 @@ public class ImgProcMethods implements IMGProcessor {
             e.printStackTrace();
         }
     }
+
+    @Override
+    public String toString() {
+        return "Sequential Image Processor";
+    }
 }
