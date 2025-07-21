@@ -1,4 +1,4 @@
-package GUIUtils;
+package GUI;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
@@ -8,13 +8,19 @@ import java.io.File;
 import java.util.Objects;
 import javax.swing.*;
 import Constants.CONSTANTS;
-import ImgProcessing.ImgProcMethods;
+import Processing.IMGProcessor;
+import sequential.ImgProcessing.ImgProcMethods;
 
 public class GUI {
+    private final JLabel originalImageLabel;
+    private final JLabel processedImageLabel;
+    private final JPanel imageDisplayPanel;
+    private final IMGProcessor processor;
 
-    public GUI() {
+    public GUI(IMGProcessor processor) {
+        this.processor = processor;
         JFrame frame = new JFrame("Kernel Image Processing");
-        frame.setSize(800, 400);
+        frame.setSize(800, 800);
 
         // Center the frame on the screen
         frame.setLocationRelativeTo(null);
@@ -128,33 +134,71 @@ public class GUI {
 
         mainPanel.add(processButtonPanel, gbc);
 
+        gbc.gridy++;
+
+        imageDisplayPanel = new JPanel(new FlowLayout());
+
+        originalImageLabel = new JLabel();
+        processedImageLabel = new JLabel();
+
+        imageDisplayPanel.add(originalImageLabel);
+        imageDisplayPanel.add(processedImageLabel);
+
+        mainPanel.add(imageDisplayPanel, gbc);
+
         // Action listener for the "Process" button
         processButton.addActionListener((ActionEvent e) -> {
             String selectedImageName = (String) imageComboBox.getSelectedItem();
-            int[][] customKernel = ImgProcMethods.getCustomKernel(kernelFields);
+            int[][] customKernel = GUImethods.getCustomKernel(kernelFields);
 
-            BufferedImage inputImage = GUImethods.loadImage(CONSTANTS.INPUT_IMAGES_DIRECTORY + selectedImageName);
+            String inputPath = CONSTANTS.INPUT_IMAGES_DIRECTORY + selectedImageName;
+            String outputPath = CONSTANTS.OUTPUT_IMAGES_DIRECTORY + "processed_" + selectedImageName;
 
+            BufferedImage inputImage = GUImethods.loadImage(inputPath);
             assert inputImage != null;
-            BufferedImage grayImage = ImgProcMethods.convertToGrayscale(inputImage);
 
-                // Measure the time around the actual image processing operation
-                long startTime = System.currentTimeMillis();
-                BufferedImage outputImage = ImgProcMethods.applyConvolution(grayImage, customKernel);
-                long endTime = System.currentTimeMillis();
-                long runtime = endTime - startTime;
-                System.out.println("Sequential runtime: " + runtime + " milliseconds");
+            BufferedImage grayImage = processor.convertToGrayscale(inputImage);
 
-                int width = inputImage.getWidth();
-                int height = inputImage.getHeight();
+            long startTime = System.currentTimeMillis();
+            BufferedImage outputImage = processor.applyConvolution(grayImage, customKernel);
+            long endTime = System.currentTimeMillis();
+            long runtime = endTime - startTime;
 
-                System.out.println("Image Size: " + width + " x " + height);
+            System.out.println("Sequential runtime: " + runtime + " milliseconds");
 
-                ImgProcMethods.processImage(selectedImageName, customKernel);
+            int width = inputImage.getWidth();
+            int height = inputImage.getHeight();
+            System.out.println("Image Size: " + width + " x " + height);
 
-                // Display images in a new frame
-                GUImethods.displayImages(inputImage, outputImage, runtime);
+            processor.processImage(inputPath, outputPath, customKernel);
+
+            // Rescale images for display
+            int displayWidth = 300;
+            int displayHeight = 300;
+
+            Image scaledInput = inputImage.getScaledInstance(displayWidth, displayHeight, Image.SCALE_SMOOTH);
+            ImageIcon inputIcon = new ImageIcon(scaledInput);
+
+            Image scaledOutput = outputImage.getScaledInstance(displayWidth, displayHeight, Image.SCALE_SMOOTH);
+            ImageIcon outputIcon = new ImageIcon(scaledOutput);
+
+            originalImageLabel.setIcon(inputIcon);
+            processedImageLabel.setIcon(outputIcon);
+
+            // Optional: set tooltips or labels under images
+            originalImageLabel.setText("Original (rescaled)");
+            originalImageLabel.setHorizontalTextPosition(JLabel.CENTER);
+            originalImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
+
+            processedImageLabel.setText("Processed (rescaled)");
+            processedImageLabel.setHorizontalTextPosition(JLabel.CENTER);
+            processedImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
+
+            // Refresh the panel to update image display
+            imageDisplayPanel.revalidate();
+            imageDisplayPanel.repaint();
         });
+
 
         labelImage.setFont(new Font("Courier", Font.BOLD, 18));
 
@@ -182,7 +226,7 @@ public class GUI {
         }
     }
 
-    public static void run() {
-        SwingUtilities.invokeLater(() -> new GUI());
+    public static void run(IMGProcessor processor) {
+        SwingUtilities.invokeLater(() -> new GUI(processor));
     }
 }

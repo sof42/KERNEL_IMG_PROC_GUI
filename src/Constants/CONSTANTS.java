@@ -1,7 +1,7 @@
 package Constants;
 
 public class CONSTANTS {
-        public static final String INPUT_IMAGES_DIRECTORY = "inputImages/";
+        public static final String INPUT_IMAGES_DIRECTORY = "common/inputImages/";
         public static final String OUTPUT_IMAGES_DIRECTORY = "outputImages/";
         public static final int[][] RIDGE_DETECTION_KERNEL = {
                 {-1, -1, -1},
