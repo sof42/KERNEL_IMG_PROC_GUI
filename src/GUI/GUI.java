@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.concurrent.CountDownLatch;
 import javax.swing.*;
 import Constants.CONSTANTS;
 import Processing.IMGProcessor;
@@ -15,6 +16,8 @@ public class GUI {
     private final JLabel runtimeLabel;
     private final IMGProcessor processor;
     private File selectedImageFile; // currently selected image file
+    private static final CountDownLatch latch = new CountDownLatch(1);
+
 
     private JFrame frame;
 
@@ -161,7 +164,6 @@ public class GUI {
             }
         });
 
-        // Process button action
         processButton.addActionListener(e -> {
             if (selectedImageFile == null) {
                 JOptionPane.showMessageDialog(frame, "Please select an image first.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -169,9 +171,7 @@ public class GUI {
             }
 
             int[][] customKernel = GUImethods.getCustomKernel(kernelFields);
-
             String inputPath = selectedImageFile.getAbsolutePath();
-            String outputPath = CONSTANTS.OUTPUT_IMAGES_DIRECTORY + "processed_" + selectedImageFile.getName();
 
             BufferedImage inputImage = GUImethods.loadImage(inputPath);
             if (inputImage == null) {
@@ -179,52 +179,77 @@ public class GUI {
                 return;
             }
 
-            BufferedImage grayImage = processor.convertToGrayscale(inputImage);
+            processButton.setEnabled(false);
+            runtimeLabel.setText("Processing...");
 
-            long startTime = System.currentTimeMillis();
-            BufferedImage outputImage = processor.applyConvolution(grayImage, customKernel);
-            long endTime = System.currentTimeMillis();
-            long runtime = endTime - startTime;
-            System.out.println(processor.toString() + " Runtime: " + runtime + " milliseconds");
+            new SwingWorker<BufferedImage, Void>() {
+                long startTime;
+                long endTime;
 
-            int width = inputImage.getWidth();
-            int height = inputImage.getHeight();
+                @Override
+                protected BufferedImage doInBackground() throws Exception {
+                    startTime = System.currentTimeMillis();
+                    BufferedImage outputImage = processor.processImage(inputPath, customKernel);
+                    endTime = System.currentTimeMillis();
+                    return outputImage;
+                }
 
-            runtimeLabel.setText(processor.toString() + " Runtime: " + runtime + " ms for Image Size: " + width + " x " + height);
+                @Override
+                protected void done() {
+                    try {
+                        BufferedImage outputImage = get(); // get processed image from doInBackground
+                        long runtime = endTime - startTime;
 
-            processor.processImage(inputPath, outputPath, customKernel);
+                        int width = inputImage.getWidth();
+                        int height = inputImage.getHeight();
 
-            int displayWidth = 300;
-            int displayHeight = 300;
+                        runtimeLabel.setText(processor.toString() + " Runtime: " + runtime + " ms for Image Size: " + width + " x " + height);
+                        System.out.println(processor.toString() + " Runtime: " + runtime + " ms for Image Size: " + width + " x " + height);
 
-            Image scaledInput = inputImage.getScaledInstance(displayWidth, displayHeight, Image.SCALE_SMOOTH);
-            ImageIcon inputIcon = new ImageIcon(scaledInput);
+                        // Scale and display input and output images
+                        int displayWidth = 300;
+                        int displayHeight = 300;
 
-            Image scaledOutput = outputImage.getScaledInstance(displayWidth, displayHeight, Image.SCALE_SMOOTH);
-            ImageIcon outputIcon = new ImageIcon(scaledOutput);
+                        Image scaledInput = inputImage.getScaledInstance(displayWidth, displayHeight, Image.SCALE_SMOOTH);
+                        ImageIcon inputIcon = new ImageIcon(scaledInput);
 
-            originalImageLabel.setIcon(inputIcon);
-            processedImageLabel.setIcon(outputIcon);
+                        Image scaledOutput = outputImage.getScaledInstance(displayWidth, displayHeight, Image.SCALE_SMOOTH);
+                        ImageIcon outputIcon = new ImageIcon(scaledOutput);
 
-            originalImageLabel.setText("Original (rescaled)");
-            originalImageLabel.setHorizontalTextPosition(JLabel.CENTER);
-            originalImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
+                        originalImageLabel.setIcon(inputIcon);
+                        processedImageLabel.setIcon(outputIcon);
 
-            processedImageLabel.setText("Processed (rescaled)");
-            processedImageLabel.setHorizontalTextPosition(JLabel.CENTER);
-            processedImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
+                        originalImageLabel.setText("Original (rescaled)");
+                        originalImageLabel.setHorizontalTextPosition(JLabel.CENTER);
+                        originalImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
 
-            imageDisplayPanel.revalidate();
-            imageDisplayPanel.repaint();
+                        processedImageLabel.setText("Processed (rescaled)");
+                        processedImageLabel.setHorizontalTextPosition(JLabel.CENTER);
+                        processedImageLabel.setVerticalTextPosition(JLabel.BOTTOM);
+
+                        imageDisplayPanel.revalidate();
+                        imageDisplayPanel.repaint();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(frame, "Error during image processing.", "Error", JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        processButton.setEnabled(true);
+                    }
+                }
+            }.execute();
         });
 
+
+
         // On window close, delete output images
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 GUImethods.deleteOutputImages();
-                System.exit(0);
+                latch.countDown();   // Signal that GUI is closing, release the main thread
+                frame.dispose();
+                // Don't call System.exit(0) here, let the main thread handle shutdown after latch.await()
             }
         });
 
@@ -249,5 +274,11 @@ public class GUI {
 
     public static void run(IMGProcessor processor) {
         SwingUtilities.invokeLater(() -> new GUI(processor));
+        try {
+            latch.await();  // Wait until the GUI window closes
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
+
 }

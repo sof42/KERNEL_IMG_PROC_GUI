@@ -87,23 +87,23 @@ public class PImgProcMethods implements IMGProcessor {
     }
 
     @Override
-    public void processImage(String inputFilePath, String outputFilePath, int[][] kernel) {
+    public BufferedImage processImage(String inputFilePath, int[][] kernel) {
         try {
             // read input image from file
             BufferedImage inputImage = ImageIO.read(new File(inputFilePath));
 
-            // first convert to grayscale (parallelized)
+            // convert to grayscale (parallelized)
             BufferedImage grayImage = convertToGrayscale(inputImage);
 
-            // then apply convolution with given kernel (also parallelized)
-            BufferedImage outputImage = applyConvolution(grayImage, kernel);
+            // apply convolution with given kernel (also parallelized)
+            return applyConvolution(grayImage, kernel);
 
-            // save processed image to output file
-            ImageIO.write(outputImage, "jpg", new File(outputFilePath));
         } catch (IOException e) {
             e.printStackTrace();
+            return null;
         }
     }
+
 
     @Override
     public String toString() {

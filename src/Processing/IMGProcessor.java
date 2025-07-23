@@ -7,5 +7,5 @@ public interface IMGProcessor {
 
         BufferedImage applyConvolution(BufferedImage inputImage, int[][] kernel);
 
-        void processImage(String inputFilePath, String outputFilePath, int[][] kernel);
+        BufferedImage processImage(String inputFilePath, int[][] kernel);
 }

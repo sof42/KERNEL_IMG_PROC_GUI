@@ -68,26 +68,19 @@ public class ImgProcMethods implements IMGProcessor {
         return outputImage;
     }
 
-    // runs the full processing: loads image, grayscales it, applies kernel, then saves it
+    // runs the full processing: loads image, grayscales it, applies kernel
     @Override
-    public void processImage(String inputFilePath, String outputFilePath, int[][] kernel) {
+    public BufferedImage processImage(String inputFilePath, int[][] kernel) {
         try {
-            // load image from file
             BufferedImage inputImage = ImageIO.read(new File(inputFilePath));
-
-            // convert to grayscale before filtering
             BufferedImage grayImage = convertToGrayscale(inputImage);
-
-            // apply kernel convolution
-            BufferedImage outputImage = applyConvolution(grayImage, kernel);
-
-            // write processed image to file
-            ImageIO.write(outputImage, "jpg", new File(outputFilePath));
+            return applyConvolution(grayImage, kernel);
         } catch (IOException e) {
-            // basic error handling
             e.printStackTrace();
+            return null;
         }
     }
+
 
     @Override
     public String toString() {
