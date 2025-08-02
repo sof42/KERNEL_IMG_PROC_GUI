@@ -1,6 +1,5 @@
 package distributed;
 
-import Processing.IMGProcessor;
 import distributed.DImgProcessing.DImgProcMethods;
 import mpi.MPI;
 import GUI.GUI;
@@ -19,20 +18,22 @@ public class DMain {
             return;
         }
 
-        IMGProcessor processor = new DImgProcMethods();
-
         if (rank == 0) {
-            // Run the GUI on the master process
+            // Master process runs GUI and manages workers
+            DImgProcMethods processor = new DImgProcMethods();
+
+            // Run the GUI on the master process (this will block until GUI closes)
             GUI.run(processor);
 
-            // Once GUI closes, stop workers
-            DImgProcMethods.stopWorkers(size);
+            // After GUI closes, send stop signals to workers
+            processor.stopWorkers(size - 1);
 
         } else {
-            // Worker process loop
-            DImgProcMethods.workerProcess(rank);
+            // Worker processes create their own instance and run the worker loop
+            DImgProcMethods processor = new DImgProcMethods();
+            processor.workerProcess(rank);
         }
 
-        MPI.Finalize(); // Finalize ONLY after work is fully done
+        MPI.Finalize();
     }
 }
