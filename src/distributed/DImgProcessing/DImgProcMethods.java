@@ -127,14 +127,22 @@ public class DImgProcMethods implements IMGProcessor {
             int kernelHeight = kernel.length;
             int overlap = kernelHeight / 2;
             int baseChunkHeight = height / numWorkers;
+            int remainder = height % numWorkers;
 
-            // Precompute Y boundaries for each chunk (with overlap)
             int[] chunkStartY = new int[numWorkers + 1];
             chunkStartY[0] = 0;
-            for (int i = 1; i < numWorkers; i++) {
-                chunkStartY[i] = Math.max(i * baseChunkHeight - overlap, 0);
+
+            for (int i = 1; i <= numWorkers; i++) {
+                // Each chunk height is baseChunkHeight, except last chunk gets remainder
+                int chunkHeight = baseChunkHeight + (i == numWorkers ? remainder : 0);
+                chunkStartY[i] = chunkStartY[i - 1] + chunkHeight;
             }
-            chunkStartY[numWorkers] = height;
+
+        // Adjust chunk start boundaries for overlap, except the first chunk
+            for (int i = 1; i < numWorkers; i++) {
+                chunkStartY[i] = Math.max(chunkStartY[i] - overlap, 0);
+            }
+
 
             // Send chunks and kernel to workers
             for (int i = 0; i < numWorkers; i++) {
